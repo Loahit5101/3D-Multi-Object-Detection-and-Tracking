@@ -1,13 +1,10 @@
 #include <ros/ros.h>
 #include <sensor_msgs/PointCloud2.h>
-#include <pcl/io/pcd_io.h>
-#include <pcl_conversions/pcl_conversions.h>
-#include <pcl/point_cloud.h>
-#include <pcl/point_types.h>
 #include <boost/filesystem.hpp>
 #include <algorithm>
 
-#include "filters.h"
+#include "lidar_filter/filters.h"
+#include "lidar_detection/lidar_detector.h"
 
 namespace fs = boost::filesystem;
 
@@ -58,6 +55,8 @@ int main(int argc, char** argv)
     ros::init(argc, argv, "point_cloud_publisher");
     ros::NodeHandle nh;
     ros::Publisher pub = nh.advertise<sensor_msgs::PointCloud2>("point_cloud_topic", 1);
+    ros::Publisher pub_ground = nh.advertise<sensor_msgs::PointCloud2>("ground_cloud_topic", 1);
+    ros::Publisher pub_object = nh.advertise<sensor_msgs::PointCloud2>("object_cloud_topic", 1);
     ros::Rate loop_rate(10);
 
     std::string input_folder_path = "/home/loahit/Downloads/projects/perception_project/0020/pcd_files/";
@@ -71,17 +70,34 @@ int main(int argc, char** argv)
         std::string input_file_path = entry.path().string();
 
         pcl::PointCloud<pcl::PointXYZI>::Ptr cloud = loadPointCloud(input_file_path);
-
+        pcl::PointCloud<pcl::PointXYZI>::Ptr segmented_cloud(new pcl::PointCloud<pcl::PointXYZI>);
+        pcl::PointCloud<pcl::PointXYZI>::Ptr ground_plane(new pcl::PointCloud<pcl::PointXYZI>);
+  
+        
         StatisticalOutlierRemoval stat(50,1.0);
         DownsampleFilter Downsample(0.1f);
-        CropBoxFilter crop(Eigen::Vector4f (-10, -10, -10, 1),Eigen::Vector4f (10, 10, 10, 1));
+        CropBoxFilter crop(Eigen::Vector4f (-100, -5, -10, 1),Eigen::Vector4f (100, 10, 10, 1));
         
 
         Downsample.apply_filter(cloud);
         stat.apply_filter(cloud);
         crop.apply_filter(cloud);
 
+        LidarObjectDetector lidar_detector;
+        lidar_detector.segment_plane(cloud, ground_plane, segmented_cloud);
+
+        float cluster_tolerance=0.6;
+         int min_size=100;
+          int max_size = 5000;
+        
+
+        pcl::PointCloud<pcl::PointXYZI>::Ptr obstacles_cloud(new pcl::PointCloud<pcl::PointXYZI>);
+       lidar_detector.cluster_cloud(segmented_cloud,obstacles_cloud, cluster_tolerance,min_size,max_size);
+
         publishPointCloud(pub, cloud);
+        publishPointCloud(pub_ground, ground_plane);
+        publishPointCloud(pub_object, obstacles_cloud);
+       
 
         ros::spinOnce();
         loop_rate.sleep();
