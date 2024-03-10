@@ -2,7 +2,7 @@
 #include <sensor_msgs/PointCloud2.h>
 #include <boost/filesystem.hpp>
 #include <algorithm>
-
+#include <visualization_msgs/MarkerArray.h>
 #include "lidar_filter/filters.h"
 #include "lidar_detection/lidar_detector.h"
 
@@ -50,6 +50,38 @@ std::vector<fs::directory_entry> createFileList(const std::string& input_folder_
 
     return file_list;
 }
+
+visualization_msgs::MarkerArray createBoundingBoxMarkers(const std::vector<BBox>& bboxes) {
+    visualization_msgs::MarkerArray markers;
+    
+
+    for(size_t i = 0;i<bboxes.size();i++)
+    {
+        visualization_msgs::Marker marker;
+    marker.header.frame_id = "map"; // Set the frame ID
+    marker.header.stamp = ros::Time::now();
+    marker.ns = "bounding_box";
+    marker.id = i;
+    marker.type = visualization_msgs::Marker::CUBE;
+    marker.action = visualization_msgs::Marker::ADD;
+    marker.pose.position.x = bboxes[i].position.x();
+    marker.pose.position.y = bboxes[i].position.y();
+    marker.pose.position.z = bboxes[i].position.z();
+    marker.pose.orientation.x = 0;
+    marker.pose.orientation.y = 0;
+    marker.pose.orientation.z = 0;
+    marker.pose.orientation.w = 1;
+    marker.scale.x = bboxes[i].dimension.x();
+    marker.scale.y = bboxes[i].dimension.y();
+    marker.scale.z = bboxes[i].dimension.z();
+    marker.color.r = 1.0;
+    marker.color.b = 1.0;
+    marker.color.a = 0.5;
+    markers.markers.push_back(marker);
+    }
+    return markers;
+}
+
 int main(int argc, char** argv)
 {
     ros::init(argc, argv, "point_cloud_publisher");
@@ -57,6 +89,8 @@ int main(int argc, char** argv)
     ros::Publisher pub = nh.advertise<sensor_msgs::PointCloud2>("point_cloud_topic", 1);
     ros::Publisher pub_ground = nh.advertise<sensor_msgs::PointCloud2>("ground_cloud_topic", 1);
     ros::Publisher pub_object = nh.advertise<sensor_msgs::PointCloud2>("object_cloud_topic", 1);
+    ros::Publisher pub_box_marker = nh.advertise<visualization_msgs::MarkerArray>("bounding_box", 1);
+
     ros::Rate loop_rate(10);
 
     std::string input_folder_path = "/home/loahit/Downloads/projects/perception_project/0020/pcd_files/";
@@ -87,16 +121,25 @@ int main(int argc, char** argv)
         lidar_detector.segment_plane(cloud, ground_plane, segmented_cloud);
 
         float cluster_tolerance=0.6;
-         int min_size=100;
-          int max_size = 5000;
+        int min_size=100;
+        int max_size = 5000;
         
 
         pcl::PointCloud<pcl::PointXYZI>::Ptr obstacles_cloud(new pcl::PointCloud<pcl::PointXYZI>);
-       lidar_detector.cluster_cloud(segmented_cloud,obstacles_cloud, cluster_tolerance,min_size,max_size);
+        
+        auto obstacles_cluster_vector = lidar_detector.cluster_cloud(segmented_cloud,obstacles_cloud, cluster_tolerance,min_size,max_size);
+
+        auto bounding_boxes = lidar_detector.GetBoundingBoxes(obstacles_cluster_vector);
+
+        std::cout << "Dimensions (length, width, height): " << bounding_boxes[0].dimension.transpose() << std::endl;
+
+        visualization_msgs::MarkerArray bbox_markers = createBoundingBoxMarkers(bounding_boxes);
 
         publishPointCloud(pub, cloud);
         publishPointCloud(pub_ground, ground_plane);
         publishPointCloud(pub_object, obstacles_cloud);
+
+        pub_box_marker.publish(bbox_markers);
        
 
         ros::spinOnce();

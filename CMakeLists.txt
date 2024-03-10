@@ -11,6 +11,7 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   sensor_msgs
   std_msgs
+  visualization_msgs
 )
 
 find_package(Eigen3 REQUIRED)
@@ -23,7 +24,7 @@ add_definitions(${PCL_DEFINITIONS})
 
 catkin_package(
 
-   CATKIN_DEPENDS cv_bridge image_transport roscpp sensor_msgs std_msgs
+   CATKIN_DEPENDS cv_bridge image_transport roscpp sensor_msgs std_msgs visualization_msgs
 
 )
 
