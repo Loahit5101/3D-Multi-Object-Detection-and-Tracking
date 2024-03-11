@@ -3,11 +3,16 @@
 #include <boost/filesystem.hpp>
 #include <algorithm>
 #include <visualization_msgs/MarkerArray.h>
-#include "lidar_filter/filters.h"
 #include "lidar_detection/lidar_detector.h"
 
 namespace fs = boost::filesystem;
 
+float CLUSTER_TOLERANCE=0.6;
+int MIN_SIZE=100;
+int MAX_SIZE = 5000;
+Eigen::Vector4f MIN_ROI(-100.0f, -5.0f, -10.0f, 1.0f);
+Eigen::Vector4f MAX_ROI(100, 10, 10, 1);
+        
 bool compareFiles(const fs::directory_entry& entry1, const fs::directory_entry& entry2)
 {
     return entry1.path().filename().string() < entry2.path().filename().string();
@@ -98,50 +103,28 @@ int main(int argc, char** argv)
     std::vector<fs::directory_entry> file_list;
     file_list = createFileList(input_folder_path);
 
+    LidarObjectDetector lidar_detector;
+
+    pcl::PointCloud<pcl::PointXYZI>::Ptr segmented_cloud(new pcl::PointCloud<pcl::PointXYZI>);
+    pcl::PointCloud<pcl::PointXYZI>::Ptr ground_plane(new pcl::PointCloud<pcl::PointXYZI>);
+    pcl::PointCloud<pcl::PointXYZI>::Ptr obstacles_cloud(new pcl::PointCloud<pcl::PointXYZI>);
+
     // Loop through poinclouds
     for (const auto& entry : file_list)
     {
         std::string input_file_path = entry.path().string();
 
         pcl::PointCloud<pcl::PointXYZI>::Ptr cloud = loadPointCloud(input_file_path);
-        pcl::PointCloud<pcl::PointXYZI>::Ptr segmented_cloud(new pcl::PointCloud<pcl::PointXYZI>);
-        pcl::PointCloud<pcl::PointXYZI>::Ptr ground_plane(new pcl::PointCloud<pcl::PointXYZI>);
   
-        
-        StatisticalOutlierRemoval stat(50,1.0);
-        DownsampleFilter Downsample(0.1f);
-        CropBoxFilter crop(Eigen::Vector4f (-100, -5, -10, 1),Eigen::Vector4f (100, 10, 10, 1));
-        
-
-        Downsample.apply_filter(cloud);
-        stat.apply_filter(cloud);
-        crop.apply_filter(cloud);
-
-        LidarObjectDetector lidar_detector;
-        lidar_detector.segment_plane(cloud, ground_plane, segmented_cloud);
-
-        float cluster_tolerance=0.6;
-        int min_size=100;
-        int max_size = 5000;
-        
-
-        pcl::PointCloud<pcl::PointXYZI>::Ptr obstacles_cloud(new pcl::PointCloud<pcl::PointXYZI>);
-        
-        auto obstacles_cluster_vector = lidar_detector.cluster_cloud(segmented_cloud,obstacles_cloud, cluster_tolerance,min_size,max_size);
-
-        auto bounding_boxes = lidar_detector.GetBoundingBoxes(obstacles_cluster_vector);
-
-        std::cout << "Dimensions (length, width, height): " << bounding_boxes[0].dimension.transpose() << std::endl;
+        auto bounding_boxes = lidar_detector.get_detections(cloud, segmented_cloud, ground_plane, obstacles_cloud);
 
         visualization_msgs::MarkerArray bbox_markers = createBoundingBoxMarkers(bounding_boxes);
 
         publishPointCloud(pub, cloud);
         publishPointCloud(pub_ground, ground_plane);
         publishPointCloud(pub_object, obstacles_cloud);
-
         pub_box_marker.publish(bbox_markers);
        
-
         ros::spinOnce();
         loop_rate.sleep();
     }

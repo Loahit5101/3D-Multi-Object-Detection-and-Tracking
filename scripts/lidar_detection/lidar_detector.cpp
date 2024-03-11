@@ -1,6 +1,14 @@
 #include "lidar_detector.h"
 
 
+void LidarObjectDetector::filter_cloud(pcl::PointCloud<pcl::PointXYZI>::Ptr& cloud){
+
+        outlierRemovalFilter.apply_filter(cloud);
+        Downsample.apply_filter(cloud);
+        crop.apply_filter(cloud);
+
+}
+
 void LidarObjectDetector::segment_plane(pcl::PointCloud<pcl::PointXYZI>::Ptr& cloud, pcl::PointCloud<pcl::PointXYZI>::Ptr& ground_plane,  pcl::PointCloud<pcl::PointXYZI>::Ptr& objects) {
 
     float _max_distance = 0.1;
@@ -71,7 +79,6 @@ std::vector<pcl::PointCloud<pcl::PointXYZI>::Ptr> LidarObjectDetector::cluster_c
 
 }
 
-
 BBox LidarObjectDetector::ConstructBoundingBox(pcl::PointCloud<pcl::PointXYZI>::Ptr& cluster)
 {
   pcl::PointXYZI min_pt, max_pt;
@@ -85,7 +92,6 @@ BBox LidarObjectDetector::ConstructBoundingBox(pcl::PointCloud<pcl::PointXYZI>::
 
 }
 
-
 std::vector<BBox> LidarObjectDetector::GetBoundingBoxes(std::vector<pcl::PointCloud<pcl::PointXYZI>::Ptr>  clusters){
 
     std::vector<BBox> bounding_boxes;
@@ -97,4 +103,15 @@ std::vector<BBox> LidarObjectDetector::GetBoundingBoxes(std::vector<pcl::PointCl
     }
 
     return bounding_boxes;
+}
+
+std::vector<BBox> LidarObjectDetector::get_detections(pcl::PointCloud<pcl::PointXYZI>::Ptr& cloud, pcl::PointCloud<pcl::PointXYZI>::Ptr& segmented_cloud, pcl::PointCloud<pcl::PointXYZI>::Ptr& ground_plane,pcl::PointCloud<pcl::PointXYZI>::Ptr& obstacles_cloud){
+    
+        filter_cloud(cloud);
+        segment_plane(cloud, ground_plane, segmented_cloud);
+        auto obstacles_cluster_vector = cluster_cloud(segmented_cloud,obstacles_cloud, 0.6, 100, 5000);
+        auto bounding_boxes = GetBoundingBoxes(obstacles_cluster_vector);
+
+        return bounding_boxes;
+
 }

@@ -1,3 +1,6 @@
+#ifndef FILTERS_H
+#define FILTERS_H
+
 #include "base_filter.h"
 #include <pcl/filters/statistical_outlier_removal.h>
 #include <pcl/filters/voxel_grid.h>
@@ -70,5 +73,7 @@ public:
   }
 
 };
+
+#endif
 
 
