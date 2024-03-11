@@ -4,14 +4,10 @@
 #include <algorithm>
 #include <visualization_msgs/MarkerArray.h>
 #include "lidar_detection/lidar_detector.h"
+#include <opencv2/opencv.hpp>
+#include <cv_bridge/cv_bridge.h>
 
 namespace fs = boost::filesystem;
-
-float CLUSTER_TOLERANCE=0.6;
-int MIN_SIZE=100;
-int MAX_SIZE = 5000;
-Eigen::Vector4f MIN_ROI(-100.0f, -5.0f, -10.0f, 1.0f);
-Eigen::Vector4f MAX_ROI(100, 10, 10, 1);
         
 bool compareFiles(const fs::directory_entry& entry1, const fs::directory_entry& entry2)
 {
@@ -29,6 +25,16 @@ pcl::PointCloud<pcl::PointXYZI>::Ptr loadPointCloud(const std::string& file_path
     return cloud;
 }
 
+cv::Mat loadImage(const std::string& file_path)
+{
+    cv::Mat image = cv::imread(file_path, cv::IMREAD_COLOR);
+    if (image.empty())
+    {
+        ROS_ERROR("Could not read image: %s", file_path.c_str());
+    }
+    return image;
+}
+
 void publishPointCloud(ros::Publisher& pub, const pcl::PointCloud<pcl::PointXYZI>::Ptr& cloud)
 {
     if (cloud)
@@ -37,6 +43,15 @@ void publishPointCloud(ros::Publisher& pub, const pcl::PointCloud<pcl::PointXYZI
         pcl::toROSMsg(*cloud, pcl_msg);
         pcl_msg.header.frame_id = "velodyne";
         pub.publish(pcl_msg);
+    }
+}
+
+void publishImage(ros::Publisher& pub, const cv::Mat& image)
+{
+    if (!image.empty())
+    {
+        sensor_msgs::ImagePtr img_msg = cv_bridge::CvImage(std_msgs::Header(), "bgr8", image).toImageMsg();
+        pub.publish(img_msg);
     }
 }
 
@@ -95,10 +110,14 @@ int main(int argc, char** argv)
     ros::Publisher pub_ground = nh.advertise<sensor_msgs::PointCloud2>("ground_cloud_topic", 1);
     ros::Publisher pub_object = nh.advertise<sensor_msgs::PointCloud2>("object_cloud_topic", 1);
     ros::Publisher pub_box_marker = nh.advertise<visualization_msgs::MarkerArray>("bounding_box", 1);
+    ros::Publisher pub_image = nh.advertise<sensor_msgs::Image>("image_topic", 1);
+
 
     ros::Rate loop_rate(10);
 
     std::string input_folder_path = "/home/loahit/Downloads/projects/perception_project/0020/pcd_files/";
+    std::string image_folder_path = "/home/loahit/Downloads/projects/perception_project/0020/image_2/";
+
 
     std::vector<fs::directory_entry> file_list;
     file_list = createFileList(input_folder_path);
@@ -112,9 +131,14 @@ int main(int argc, char** argv)
     // Loop through poinclouds
     for (const auto& entry : file_list)
     {
-        std::string input_file_path = entry.path().string();
+        std::string lidar_file_path = entry.path().string();
+        std::string image_file_path = image_folder_path + entry.path().stem().string() + ".png";
 
-        pcl::PointCloud<pcl::PointXYZI>::Ptr cloud = loadPointCloud(input_file_path);
+        pcl::PointCloud<pcl::PointXYZI>::Ptr cloud = loadPointCloud(lidar_file_path);
+        cv::Mat image = loadImage(image_file_path);
+
+        std::cout << "Width : " << image.size().width << std::endl;
+        std::cout << "Height: " << image.size().height << std::endl;
   
         auto bounding_boxes = lidar_detector.get_detections(cloud, segmented_cloud, ground_plane, obstacles_cloud);
 
@@ -124,6 +148,7 @@ int main(int argc, char** argv)
         publishPointCloud(pub_ground, ground_plane);
         publishPointCloud(pub_object, obstacles_cloud);
         pub_box_marker.publish(bbox_markers);
+        publishImage(pub_image, image);
        
         ros::spinOnce();
         loop_rate.sleep();
