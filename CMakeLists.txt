@@ -34,7 +34,7 @@ include_directories(
   ${catkin_INCLUDE_DIRS} ${EIGEN3_INCLUDE_DIR} ${Boost_INCLUDE_DIRS} ${PCL_INCLUDE_DIRS}
 )
 
-add_executable(main_node scripts/main.cpp scripts/lidar_detection/lidar_detector.cpp scripts/image_detection/detector.cpp)
+add_executable(main_node scripts/main.cpp scripts/lidar_detection/lidar_detector.cpp scripts/camera_detection/camera_detector.cpp)
 target_link_libraries(main_node ${catkin_LIBRARIES} ${OpenCV_LIBS} ${Boost_LIBRARIES} ${PCL_LIBRARIES})
 
 

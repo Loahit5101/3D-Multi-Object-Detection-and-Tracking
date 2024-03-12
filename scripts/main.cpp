@@ -4,9 +4,9 @@
 #include <algorithm>
 #include <visualization_msgs/MarkerArray.h>
 #include "lidar_detection/lidar_detector.h"
-#include "image_detection/detector.h"
 #include <opencv2/opencv.hpp>
 #include <cv_bridge/cv_bridge.h>
+#include "camera_detection/camera_detector.h"
 
 namespace fs = boost::filesystem;
         
@@ -119,25 +119,27 @@ int main(int argc, char** argv)
     std::string input_folder_path = "/home/loahit/Downloads/projects/perception_project/0020/pcd_files/";
     std::string image_folder_path = "/home/loahit/Downloads/projects/perception_project/0020/image_2/";
 
-    std::string model_config = "/home/loahit/Downloads/projects/perception_project/yolov3.cfg";
-    std::string model_weights = "/home/loahit/Downloads/projects/perception_project/yolov3.weights";
+    std::string model_config = "/home/loahit/Downloads/projects/perception_project/udacity_model/yolov3.cfg";
+    std::string model_weights = "/home/loahit/Downloads/projects/perception_project/udacity_model/yolov3.weights";
     std::string class_names = "/home/loahit/Downloads/projects/perception_project/coco.names";
 
     std::vector<fs::directory_entry> file_list;
     file_list = createFileList(input_folder_path);
 
     LidarObjectDetector lidar_detector;
-    CameraDetector camera_detector(model_weights, model_config, class_names, 0.5, 0.4);
+    CameraObjectDetector camera_detector(model_weights, model_config, class_names, 0.5, 0.4);
+
     std::vector<cv::Mat> detection_info;
 
-
-    pcl::PointCloud<pcl::PointXYZI>::Ptr segmented_cloud(new pcl::PointCloud<pcl::PointXYZI>);
-    pcl::PointCloud<pcl::PointXYZI>::Ptr ground_plane(new pcl::PointCloud<pcl::PointXYZI>);
-    pcl::PointCloud<pcl::PointXYZI>::Ptr obstacles_cloud(new pcl::PointCloud<pcl::PointXYZI>);
+    
 
     // Loop through poinclouds and images
     for (const auto& entry : file_list)
     {
+        pcl::PointCloud<pcl::PointXYZI>::Ptr segmented_cloud(new pcl::PointCloud<pcl::PointXYZI>);
+        pcl::PointCloud<pcl::PointXYZI>::Ptr ground_plane(new pcl::PointCloud<pcl::PointXYZI>);
+        pcl::PointCloud<pcl::PointXYZI>::Ptr obstacles_cloud(new pcl::PointCloud<pcl::PointXYZI>);
+
         std::string lidar_file_path = entry.path().string();
         std::string image_file_path = image_folder_path + entry.path().stem().string() + ".png";
 
@@ -146,10 +148,12 @@ int main(int argc, char** argv)
 
         camera_detector.detectObject(image, detection_info);
         camera_detector.drawDetections(image, detection_info);
-  
-        auto bounding_boxes = lidar_detector.get_detections(cloud, segmented_cloud, ground_plane, obstacles_cloud);
 
-        visualization_msgs::MarkerArray bbox_markers = createBoundingBoxMarkers(bounding_boxes);
+        std::cout<<"detection_info size"<< detection_info.size()<<std::endl;
+  
+        auto lidar_bounding_boxes = lidar_detector.get_detections(cloud, segmented_cloud, ground_plane, obstacles_cloud);
+
+        visualization_msgs::MarkerArray bbox_markers = createBoundingBoxMarkers(lidar_bounding_boxes);
 
         publishPointCloud(pub, cloud);
         publishPointCloud(pub_ground, ground_plane);
