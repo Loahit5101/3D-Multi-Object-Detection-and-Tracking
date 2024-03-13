@@ -22,7 +22,7 @@
 ```
 catkin_make
 source devel/setup.bash
-rosrun motl main_node 
+rosrun motl main_node DATA_PATH
 ```
 ## LiDAR Object Detection:
 

@@ -102,40 +102,50 @@ visualization_msgs::MarkerArray createBoundingBoxMarkers(const std::vector<BBox>
     }
     return markers;
 }
-
 int main(int argc, char** argv)
 {
+    // Initialize ROS
     ros::init(argc, argv, "point_cloud_publisher");
     ros::NodeHandle nh;
+
+    // Define ROS publishers
     ros::Publisher pub = nh.advertise<sensor_msgs::PointCloud2>("point_cloud_topic", 1);
     ros::Publisher pub_ground = nh.advertise<sensor_msgs::PointCloud2>("ground_cloud_topic", 1);
     ros::Publisher pub_object = nh.advertise<sensor_msgs::PointCloud2>("object_cloud_topic", 1);
     ros::Publisher pub_box_marker = nh.advertise<visualization_msgs::MarkerArray>("bounding_box", 1);
     ros::Publisher pub_image = nh.advertise<sensor_msgs::Image>("image_topic", 1);
 
-
     ros::Rate loop_rate(10);
 
-    std::string input_folder_path = "/home/loahit/Downloads/projects/perception_project/0020/pcd_files/";
-    std::string image_folder_path = "/home/loahit/Downloads/projects/perception_project/0020/image_2/";
+    // Check if the base path is provided as a command-line argument
+    if (argc != 2) {
+        ROS_ERROR("Usage: %s <base_path>", argv[0]);
+        return 1;
+    }
 
-    std::string model_config = "/home/loahit/Downloads/projects/perception_project/udacity_model/yolov3.cfg";
-    std::string model_weights = "/home/loahit/Downloads/projects/perception_project/udacity_model/yolov3.weights";
-    std::string class_names = "/home/loahit/Downloads/projects/perception_project/coco.names";
+    std::string base_path = argv[1];
 
+    // Construct paths using the provided base path
+    std::string input_folder_path = base_path + "pcd_files/";
+    std::string image_folder_path = base_path + "image_2/";
+    std::string model_config = base_path + "yolov3.cfg";
+    std::string model_weights = base_path + "yolov3.weights";
+    std::string class_names = base_path + "coco.names";
+
+    // Create a list of files in the input folder
     std::vector<fs::directory_entry> file_list;
     file_list = createFileList(input_folder_path);
 
+    // Initialize object detectors
     LidarObjectDetector lidar_detector;
     CameraObjectDetector camera_detector(model_weights, model_config, class_names, 0.5, 0.4);
 
     std::vector<cv::Mat> detection_info;
 
-    
-
-    // Loop through poinclouds and images
+    // Loop through point clouds and images
     for (const auto& entry : file_list)
     {
+        // Load point cloud and image
         pcl::PointCloud<pcl::PointXYZI>::Ptr segmented_cloud(new pcl::PointCloud<pcl::PointXYZI>);
         pcl::PointCloud<pcl::PointXYZI>::Ptr ground_plane(new pcl::PointCloud<pcl::PointXYZI>);
         pcl::PointCloud<pcl::PointXYZI>::Ptr obstacles_cloud(new pcl::PointCloud<pcl::PointXYZI>);
@@ -146,21 +156,24 @@ int main(int argc, char** argv)
         pcl::PointCloud<pcl::PointXYZI>::Ptr cloud = loadPointCloud(lidar_file_path);
         cv::Mat image = loadImage(image_file_path);
 
+        // Detect objects in the image
         camera_detector.detectObject(image, detection_info);
         camera_detector.drawDetections(image, detection_info);
 
-        std::cout<<"detection_info size"<< detection_info.size()<<std::endl;
-  
+        // Get bounding boxes from LiDAR
         auto lidar_bounding_boxes = lidar_detector.get_detections(cloud, segmented_cloud, ground_plane, obstacles_cloud);
 
+        // Create visualization markers for bounding boxes
         visualization_msgs::MarkerArray bbox_markers = createBoundingBoxMarkers(lidar_bounding_boxes);
 
+        // Publish data
         publishPointCloud(pub, cloud);
         publishPointCloud(pub_ground, ground_plane);
         publishPointCloud(pub_object, obstacles_cloud);
         pub_box_marker.publish(bbox_markers);
         publishImage(pub_image, image);
-       
+
+        // Spin and sleep
         ros::spinOnce();
         loop_rate.sleep();
     }
