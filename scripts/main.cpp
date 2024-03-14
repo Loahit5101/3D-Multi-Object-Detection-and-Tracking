@@ -7,6 +7,7 @@
 #include <opencv2/opencv.hpp>
 #include <cv_bridge/cv_bridge.h>
 #include "camera_detection/camera_detector.h"
+#include "tracking/kalman_filter.h"
 
 namespace fs = boost::filesystem;
         
@@ -102,6 +103,40 @@ visualization_msgs::MarkerArray createBoundingBoxMarkers(const std::vector<BBox>
     }
     return markers;
 }
+
+void test_kalman(){
+
+    Eigen::VectorXd x(6); // State vector: [x, y, z, vx, vy, vz]
+    x << 0, 0, 0, 0, 0, 0; // Initial state, all zeros
+    Eigen::MatrixXd P(6, 6); // Covariance matrix
+    P << 1, 0, 0, 0, 0, 0,
+         0, 1, 0, 0, 0, 0,
+         0, 0, 1, 0, 0, 0,
+         0, 0, 0, 1, 0, 0,
+         0, 0, 0, 0, 1, 0,
+         0, 0, 0, 0, 0, 1;
+
+    int state_dim = 6; // Dimension of the state vector
+    double dt = 0.1; // Time step
+    double process_variance = 0.01; // Process variance
+    ExtendedKalmanFilter ekf(state_dim, dt, process_variance);
+
+    // Perform prediction step
+    ekf.predict(x, P);
+
+    std::cout << "Predicted state vector x:" << std::endl << x << std::endl;
+    std::cout << "Predicted covariance matrix P:" << std::endl << P << std::endl;
+
+    Eigen::MatrixXd z(3, 1); // Measurement vector for LiDAR: [x, y, z]
+    z << 1, 2, 3; 
+
+    std::string sensor_name = "LiDAR"; 
+    ekf.update(x, P, z, sensor_name);
+
+    std::cout << "Updated state vector x:" << std::endl << x << std::endl;
+    std::cout << "Updated covariance matrix P:" << std::endl << P << std::endl;
+
+}
 int main(int argc, char** argv)
 {
     // Initialize ROS
@@ -141,6 +176,8 @@ int main(int argc, char** argv)
     CameraObjectDetector camera_detector(model_weights, model_config, class_names, 0.5, 0.4);
 
     std::vector<cv::Mat> detection_info;
+
+    test_kalman();
 
     // Loop through point clouds and images
     for (const auto& entry : file_list)
