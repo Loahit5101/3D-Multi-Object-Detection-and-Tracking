@@ -27,9 +27,16 @@ struct BBox
 {
     Eigen::Vector3f position;
     Eigen::Vector3f dimension;
+    Eigen::Quaternionf quaternion;
 
-    BBox(const Eigen::Vector3f& position, const Eigen::Vector3f& dimension)
-        : position(position), dimension(dimension){}
+
+	  BBox(Eigen::Vector3f position, Eigen::Vector3f dimension, Eigen::Quaternionf quaternion)
+		: position(position), dimension(dimension), quaternion(quaternion)
+	  {}
+
+    BBox(Eigen::Vector3f position, Eigen::Vector3f dimension)
+		: position(position), dimension(dimension)
+	  {}
 
 };
 
@@ -46,6 +53,7 @@ class LidarObjectDetector{
    void segment_plane(pcl::PointCloud<pcl::PointXYZI>::Ptr& cloud, pcl::PointCloud<pcl::PointXYZI>::Ptr& ground_plane,  pcl::PointCloud<pcl::PointXYZI>::Ptr& objects);
    std::vector<pcl::PointCloud<pcl::PointXYZI>::Ptr> cluster_cloud(pcl::PointCloud<pcl::PointXYZI>::Ptr& cloud, pcl::PointCloud<pcl::PointXYZI>::Ptr& obstacle_cloud, float cluster_tolerance, int min_size, int max_size);   
    BBox ConstructBoundingBox(pcl::PointCloud<pcl::PointXYZI>::Ptr& cluster);
+   BBox ConstructBoundingBox_PCA(pcl::PointCloud<pcl::PointXYZI>::Ptr& cluster);
    std::vector<BBox> GetBoundingBoxes(std::vector<pcl::PointCloud<pcl::PointXYZI>::Ptr> clusters);
    std::vector<BBox> get_detections(pcl::PointCloud<pcl::PointXYZI>::Ptr& cloud, pcl::PointCloud<pcl::PointXYZI>::Ptr& segmented_cloud, pcl::PointCloud<pcl::PointXYZI>::Ptr& ground_plane,pcl::PointCloud<pcl::PointXYZI>::Ptr& obstacles_cloud);
   

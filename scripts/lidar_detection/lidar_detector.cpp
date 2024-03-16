@@ -3,9 +3,10 @@
 
 void LidarObjectDetector::filter_cloud(pcl::PointCloud<pcl::PointXYZI>::Ptr& cloud){
 
+        crop.apply_filter(cloud);
         outlierRemovalFilter.apply_filter(cloud);
         Downsample.apply_filter(cloud);
-        crop.apply_filter(cloud);
+        
 
 }
 
@@ -90,6 +91,42 @@ BBox LidarObjectDetector::ConstructBoundingBox(pcl::PointCloud<pcl::PointXYZI>::
 
   return BBox(position, dimension);
 
+}
+
+BBox LidarObjectDetector::ConstructBoundingBox_PCA(pcl::PointCloud<pcl::PointXYZI>::Ptr& cluster)
+{
+  pcl::PointXYZI min_pt, max_pt;
+  pcl::getMinMax3D(*cluster, min_pt, max_pt);
+  const float box_height = max_pt.z - min_pt.z;
+  const float box_z = (max_pt.z + min_pt.z)/2;
+
+  // get centroid
+  Eigen::Vector4f pca_centroid;
+  pcl::compute3DCentroid(*cluster, pca_centroid);
+
+  // project to plane z = z_centroid
+  for (size_t i = 0; i < cluster->size(); ++i)
+  {
+    cluster->points[i].z = pca_centroid(2);
+  }
+
+  // get principal axes & transform the original cloud to PCA coordinates
+  pcl::PointCloud<pcl::PointXYZI>::Ptr pca_projected_cloud(new pcl::PointCloud<pcl::PointXYZI>);
+  pcl::PCA<pcl::PointXYZI> pca;
+  pca.setInputCloud(cluster);
+  pca.project(*cluster, *pca_projected_cloud);
+  
+  const auto eigen_vectors = pca.getEigenVectors();
+
+  pcl::getMinMax3D(*pca_projected_cloud, min_pt, max_pt);
+  const Eigen::Vector3f meanDiagonal = 0.5f * (max_pt.getVector3fMap() + min_pt.getVector3fMap());
+
+  // get oriented boxes
+  const Eigen::Quaternionf quaternion(eigen_vectors);
+  const Eigen::Vector3f position = eigen_vectors * meanDiagonal + pca_centroid.head<3>();
+  const Eigen::Vector3f dimension((max_pt.x - min_pt.x), (max_pt.y - min_pt.y), box_height);
+
+  return BBox(position, dimension, quaternion);
 }
 
 std::vector<BBox> LidarObjectDetector::GetBoundingBoxes(std::vector<pcl::PointCloud<pcl::PointXYZI>::Ptr>  clusters){
