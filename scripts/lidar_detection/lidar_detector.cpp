@@ -33,7 +33,6 @@ void LidarObjectDetector::segment_plane(pcl::PointCloud<pcl::PointXYZI>::Ptr& cl
     extract.setNegative(false); // Extract the inliers
     extract.filter(*ground_plane); // Extract the inliers to a different point cloud
 
-    // Optionally, you can extract the outliers to a different point cloud
     extract.setNegative(true); // Extract the outliers
     extract.filter(*objects); // Extract the outliers to a different point cloud
 
@@ -80,7 +79,7 @@ std::vector<pcl::PointCloud<pcl::PointXYZI>::Ptr> LidarObjectDetector::cluster_c
 
 }
 
-BBox LidarObjectDetector::ConstructBoundingBox(pcl::PointCloud<pcl::PointXYZI>::Ptr& cluster)
+BBox LidarObjectDetector::ConstructBoundingBox(pcl::PointCloud<pcl::PointXYZI>::Ptr& cluster, size_t& obstacle_id_count)
 {
   pcl::PointXYZI min_pt, max_pt;
  
@@ -89,11 +88,11 @@ BBox LidarObjectDetector::ConstructBoundingBox(pcl::PointCloud<pcl::PointXYZI>::
   const Eigen::Vector3f position((max_pt.x + min_pt.x)/2, (max_pt.y + min_pt.y)/2, (max_pt.z + min_pt.z)/2);
   const Eigen::Vector3f dimension((max_pt.x - min_pt.x), (max_pt.y - min_pt.y), (max_pt.z - min_pt.z));
 
-  return BBox(position, dimension);
+  return BBox(obstacle_id_count, position, dimension);
 
 }
 
-BBox LidarObjectDetector::ConstructBoundingBox_PCA(pcl::PointCloud<pcl::PointXYZI>::Ptr& cluster)
+BBox LidarObjectDetector::ConstructBoundingBox_PCA(pcl::PointCloud<pcl::PointXYZI>::Ptr& cluster, size_t& obstacle_id_count)
 {
   pcl::PointXYZI min_pt, max_pt;
   pcl::getMinMax3D(*cluster, min_pt, max_pt);
@@ -126,28 +125,30 @@ BBox LidarObjectDetector::ConstructBoundingBox_PCA(pcl::PointCloud<pcl::PointXYZ
   const Eigen::Vector3f position = eigen_vectors * meanDiagonal + pca_centroid.head<3>();
   const Eigen::Vector3f dimension((max_pt.x - min_pt.x), (max_pt.y - min_pt.y), box_height);
 
-  return BBox(position, dimension, quaternion);
+  return BBox(obstacle_id_count, position, dimension, quaternion);
 }
 
-std::vector<BBox> LidarObjectDetector::GetBoundingBoxes(std::vector<pcl::PointCloud<pcl::PointXYZI>::Ptr>  clusters){
+std::vector<BBox> LidarObjectDetector::GetBoundingBoxes(std::vector<pcl::PointCloud<pcl::PointXYZI>::Ptr>  clusters, size_t& obstacle_id_count){
 
     std::vector<BBox> bounding_boxes;
     for(size_t i = 0; i < clusters.size(); ++i ){
 
-        BBox box = ConstructBoundingBox(clusters[i]);
+        BBox box = ConstructBoundingBox(clusters[i], obstacle_id_count);
         bounding_boxes.push_back(box);
+
+        obstacle_id_count = (obstacle_id_count < SIZE_MAX)? ++obstacle_id_count : 0;
 
     }
 
     return bounding_boxes;
 }
 
-std::vector<BBox> LidarObjectDetector::get_detections(pcl::PointCloud<pcl::PointXYZI>::Ptr& cloud, pcl::PointCloud<pcl::PointXYZI>::Ptr& segmented_cloud, pcl::PointCloud<pcl::PointXYZI>::Ptr& ground_plane,pcl::PointCloud<pcl::PointXYZI>::Ptr& obstacles_cloud){
+std::vector<BBox> LidarObjectDetector::getDetections(pcl::PointCloud<pcl::PointXYZI>::Ptr& cloud, pcl::PointCloud<pcl::PointXYZI>::Ptr& segmented_cloud, pcl::PointCloud<pcl::PointXYZI>::Ptr& ground_plane,pcl::PointCloud<pcl::PointXYZI>::Ptr& obstacles_cloud, size_t& obstacle_id_count){
     
         filter_cloud(cloud);
         segment_plane(cloud, ground_plane, segmented_cloud);
         auto obstacles_cluster_vector = cluster_cloud(segmented_cloud,obstacles_cloud, 0.6, 100, 5000);
-        auto bounding_boxes = GetBoundingBoxes(obstacles_cluster_vector);
+        auto bounding_boxes = GetBoundingBoxes(obstacles_cluster_vector, obstacle_id_count);
 
         return bounding_boxes;
 

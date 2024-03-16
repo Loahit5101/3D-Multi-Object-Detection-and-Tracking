@@ -75,31 +75,49 @@ std::vector<fs::directory_entry> createFileList(const std::string& input_folder_
 
 visualization_msgs::MarkerArray createBoundingBoxMarkers(const std::vector<BBox>& bboxes) {
     visualization_msgs::MarkerArray markers;
-    
 
-    for(size_t i = 0;i<bboxes.size();i++)
-    {
+    for(size_t i = 0; i < bboxes.size(); i++) {
         visualization_msgs::Marker marker;
-    marker.header.frame_id = "map"; // Set the frame ID
-    marker.header.stamp = ros::Time::now();
-    marker.ns = "bounding_box";
-    marker.id = i;
-    marker.type = visualization_msgs::Marker::CUBE;
-    marker.action = visualization_msgs::Marker::ADD;
-    marker.pose.position.x = bboxes[i].position.x();
-    marker.pose.position.y = bboxes[i].position.y();
-    marker.pose.position.z = bboxes[i].position.z();
-    marker.pose.orientation.x = 0;
-    marker.pose.orientation.y = 0;
-    marker.pose.orientation.z = 0;
-    marker.pose.orientation.w = 1;
-    marker.scale.x = bboxes[i].dimension.x();
-    marker.scale.y = bboxes[i].dimension.y();
-    marker.scale.z = bboxes[i].dimension.z();
-    marker.color.r = 1.0;
-    marker.color.b = 1.0;
-    marker.color.a = 0.5;
-    markers.markers.push_back(marker);
+        marker.header.frame_id = "map"; // Set the frame ID
+        marker.header.stamp = ros::Time::now();
+        marker.ns = "bounding_box";
+        marker.id = i;
+        marker.type = visualization_msgs::Marker::CUBE;
+        marker.action = visualization_msgs::Marker::ADD;
+        marker.pose.position.x = bboxes[i].position.x();
+        marker.pose.position.y = bboxes[i].position.y();
+        marker.pose.position.z = bboxes[i].position.z();
+        marker.pose.orientation.x = bboxes[i].quaternion.x();
+        marker.pose.orientation.y = bboxes[i].quaternion.y();
+        marker.pose.orientation.z = bboxes[i].quaternion.z();
+        marker.pose.orientation.w = bboxes[i].quaternion.w();
+        marker.scale.x = bboxes[i].dimension.x();
+        marker.scale.y = bboxes[i].dimension.y();
+        marker.scale.z = bboxes[i].dimension.z();
+        marker.color.r = 1.0;
+        marker.color.b = 1.0;
+        marker.color.a = 0.5;
+        markers.markers.push_back(marker);
+
+        // Create text marker for ID
+        visualization_msgs::Marker text_marker;
+        text_marker.header.frame_id = "map";
+        text_marker.header.stamp = ros::Time::now();
+        text_marker.ns = "text";
+        text_marker.id = i;
+        text_marker.type = visualization_msgs::Marker::TEXT_VIEW_FACING;
+        text_marker.action = visualization_msgs::Marker::ADD;
+        text_marker.pose.position.x = bboxes[i].position.x();
+        text_marker.pose.position.y = bboxes[i].position.y();
+        text_marker.pose.position.z = bboxes[i].position.z() + bboxes[i].dimension.z() + 0.1; // Adjust height above bounding box
+        text_marker.pose.orientation.w = 1.0;
+        text_marker.scale.z = 0.5;
+        text_marker.color.r = 1.0;
+        text_marker.color.g = 1.0;
+        text_marker.color.b = 1.0;
+        text_marker.color.a = 1.0;
+        text_marker.text = std::to_string(bboxes[i].id);
+        markers.markers.push_back(text_marker);
     }
     return markers;
 }
@@ -177,7 +195,9 @@ int main(int argc, char** argv)
 
     std::vector<cv::Mat> detection_info;
 
-    test_kalman();
+    size_t obstacle_id_count = 0;
+
+    //test_kalman();
 
     // Loop through point clouds and images
     for (const auto& entry : file_list)
@@ -198,7 +218,7 @@ int main(int argc, char** argv)
         camera_detector.drawDetections(image, detection_info);
 
         // Get bounding boxes from LiDAR
-        auto lidar_bounding_boxes = lidar_detector.get_detections(cloud, segmented_cloud, ground_plane, obstacles_cloud);
+        auto lidar_bounding_boxes = lidar_detector.getDetections(cloud, segmented_cloud, ground_plane, obstacles_cloud, obstacle_id_count);
 
         // Create visualization markers for bounding boxes
         visualization_msgs::MarkerArray bbox_markers = createBoundingBoxMarkers(lidar_bounding_boxes);
