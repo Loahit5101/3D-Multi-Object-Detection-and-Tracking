@@ -19,11 +19,22 @@
 - Download KITTI tracking dataset, convert.bin pointcloud files to .pcd file
   
 ## Usage
+ 
 ```
 catkin_make
 source devel/setup.bash
 rosrun motl main_node DATA_PATH
 ```
+### Docker
+
+```
+docker build -t mot .
+docker run --network="host" -v DATA_PATH:/dataset -it mot
+rosrun motl main_node /dataset
+``
+
+run roscore inside container first and replace dataset valume path in the dockerfile.
+
 ## LiDAR Object Detection:
 
 Uses classical Poincloud Processing algorithms in PCL to detect 3D obstacles.
