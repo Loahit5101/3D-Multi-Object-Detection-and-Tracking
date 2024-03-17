@@ -31,7 +31,7 @@ rosrun motl main_node DATA_PATH
 docker build -t mot .
 docker run --network="host" -v DATA_PATH:/dataset -it mot
 rosrun motl main_node /dataset
-``
+```
 
 run roscore inside container first and replace dataset valume path in the dockerfile.
 
