@@ -1,10 +1,12 @@
 # Perception: Multi-Object Detection and Tracking
 
 1. Multi-Object Detection and Tracking for Autonomous Driving / Robot Perception
-2. LiDAR 3D object detection using PCL
+2. LiDAR 3D object detection using **PCL**
 3. Camera 2D object detection using YOLOv3 model
 4. Tracking and sensor Fusion - ongoing
-5. ROS is only used for visualization
+5. **Docker** and GitHub actions are used for **CI/CD**
+6. GTest is used for executing tests.
+7. ROS is only used for visualization
 
    
      ![lidar_camera_detection3-2024-03-12_19 22 58-ezgif com-speed](https://github.com/Loahit5101/3D-Multi-Object-Detection-and-Tracking/assets/55102632/d732b39b-e291-4833-b68a-1c5815f2e164)
@@ -14,16 +16,23 @@
 - Eigen3
 - OpenCV
 - PCL 1.8
-- ROS 
+- ROS Noetic
+- GTest
 - Boost (with components: filesystem, thread, system, program_options)
 - Download KITTI tracking dataset, convert.bin pointcloud files to .pcd file
   
 ## Usage
  
+### Detection and Tracking 
 ```
 catkin_make
 source devel/setup.bash
 rosrun motl main_node DATA_PATH
+```
+
+### Testing
+```
+rosrun motl test_main_node 
 ```
 ### Docker
 
