@@ -7,7 +7,7 @@
 #include <opencv2/opencv.hpp>
 #include <cv_bridge/cv_bridge.h>
 #include "camera_detection/camera_detector.h"
-#include "tracking/kalman_filter.h"
+#include "tracking/tracker.h"
 
 namespace fs = boost::filesystem;
         
@@ -122,39 +122,6 @@ visualization_msgs::MarkerArray createBoundingBoxMarkers(const std::vector<BBox>
     return markers;
 }
 
-void test_kalman(){
-
-    Eigen::VectorXd x(6); // State vector: [x, y, z, vx, vy, vz]
-    x << 0, 0, 0, 0, 0, 0; // Initial state, all zeros
-    Eigen::MatrixXd P(6, 6); // Covariance matrix
-    P << 1, 0, 0, 0, 0, 0,
-         0, 1, 0, 0, 0, 0,
-         0, 0, 1, 0, 0, 0,
-         0, 0, 0, 1, 0, 0,
-         0, 0, 0, 0, 1, 0,
-         0, 0, 0, 0, 0, 1;
-
-    int state_dim = 6; // Dimension of the state vector
-    double dt = 0.1; // Time step
-    double process_variance = 0.01; // Process variance
-    ExtendedKalmanFilter ekf(state_dim, dt, process_variance);
-
-    // Perform prediction step
-    ekf.predict(x, P);
-
-    std::cout << "Predicted state vector x:" << std::endl << x << std::endl;
-    std::cout << "Predicted covariance matrix P:" << std::endl << P << std::endl;
-
-    Eigen::MatrixXd z(3, 1); // Measurement vector for LiDAR: [x, y, z]
-    z << 1, 2, 3; 
-
-    std::string sensor_name = "LiDAR"; 
-    ekf.update(x, P, z, sensor_name);
-
-    std::cout << "Updated state vector x:" << std::endl << x << std::endl;
-    std::cout << "Updated covariance matrix P:" << std::endl << P << std::endl;
-
-}
 int main(int argc, char** argv)
 {
     // Initialize ROS
@@ -170,7 +137,6 @@ int main(int argc, char** argv)
 
     ros::Rate loop_rate(10);
 
-    // Check if the base path is provided as a command-line argument
     if (argc != 2) {
         ROS_ERROR("Usage: %s <base_path>", argv[0]);
         return 1;
@@ -193,12 +159,15 @@ int main(int argc, char** argv)
     LidarObjectDetector lidar_detector;
     CameraObjectDetector camera_detector(model_weights, model_config, class_names, 0.5, 0.4);
 
+    Tracker multi_object_tracker;
+
     std::vector<cv::Mat> detection_info;
 
     size_t obstacle_id_count = 0;
 
     //test_kalman();
 
+    int frame_counter = 0;
     // Loop through point clouds and images
     for (const auto& entry : file_list)
     {
@@ -220,6 +189,8 @@ int main(int argc, char** argv)
         // Get bounding boxes from LiDAR
         auto lidar_bounding_boxes = lidar_detector.getDetections(cloud, segmented_cloud, ground_plane, obstacles_cloud, obstacle_id_count);
 
+        multi_object_tracker.detectionstoTracks(lidar_bounding_boxes);
+
         // Create visualization markers for bounding boxes
         visualization_msgs::MarkerArray bbox_markers = createBoundingBoxMarkers(lidar_bounding_boxes);
 
@@ -230,6 +201,8 @@ int main(int argc, char** argv)
         pub_box_marker.publish(bbox_markers);
         publishImage(pub_image, image);
 
+        frame_counter+=1;
+ 
         // Spin and sleep
         ros::spinOnce();
         loop_rate.sleep();

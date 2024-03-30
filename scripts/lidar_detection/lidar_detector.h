@@ -25,21 +25,19 @@
 
 struct BBox
 {
-
     size_t id;
-    
     Eigen::Vector3f position;
     Eigen::Vector3f dimension;
     Eigen::Quaternionf quaternion;
 
-	  BBox(size_t id, Eigen::Vector3f position, Eigen::Vector3f dimension, Eigen::Quaternionf quaternion)
-		: id(id), position(position), dimension(dimension), quaternion(quaternion)
-	  {}
+    BBox(size_t id, Eigen::Vector3f position, Eigen::Vector3f dimension, Eigen::Quaternionf quaternion)
+        : id(id), position(position), dimension(dimension), quaternion(quaternion) {}
 
     BBox(size_t id, Eigen::Vector3f position, Eigen::Vector3f dimension)
-		: id(id), position(position), dimension(dimension)
-	  {}
+        : id(id), position(position), dimension(dimension), quaternion(Eigen::Quaternionf::Identity()) {}
 
+    // Default constructor
+    BBox() : id(0), position(Eigen::Vector3f::Zero()), dimension(Eigen::Vector3f::Zero()), quaternion(Eigen::Quaternionf::Identity()) {}
 };
 
 class LidarObjectDetector{

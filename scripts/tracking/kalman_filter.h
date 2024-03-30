@@ -1,3 +1,6 @@
+#ifndef KALMAN_FILTER_H
+#define KALMAN_FILTER_H
+
 #include <iostream>
 #include <Eigen/Core>
 #include  <string>
@@ -5,10 +8,11 @@ class ExtendedKalmanFilter {
 
 private:
     int state_dim;
-    double dt;
     double process_variance;
 
 public:
+    
+    double dt;
     ExtendedKalmanFilter(int state_dim, double dt, double process_variance) 
         : state_dim(state_dim), dt(dt), process_variance(process_variance) {}
 
@@ -98,3 +102,5 @@ public:
 
     }
 };
+
+#endif
