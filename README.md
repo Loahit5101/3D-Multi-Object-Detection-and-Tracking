@@ -1,10 +1,10 @@
 # Perception: Multi-Object Detection and Tracking
 
 1. Multi-Object Detection and Tracking for Autonomous Driving / Robot Perception
-2. LiDAR 3D object detection using **PCL**
+2. LiDAR 3D object detection using PCL
 3. Camera 2D object detection using YOLOv3 model
 4. Tracking and sensor Fusion - ongoing
-5. **Docker** and GitHub actions are used for **CI/CD**
+5. Docker and GitHub actions are used for CI/CD
 6. GTest is used for executing tests.
 7. ROS is only used for visualization
 
@@ -63,6 +63,10 @@ Uses YOLOv3 object detection model to detect 2D obstacles.
 3. Non-max suppression
 4. Visualization of detected obstacles
 
-track fusion - In progress
+
+## Tracking:
+
+1. Extended Kalman Filter for tracking
+2. Hungarian Algorithm for data association
 
 
