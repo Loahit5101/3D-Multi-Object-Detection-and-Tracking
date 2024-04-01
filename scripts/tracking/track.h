@@ -8,7 +8,7 @@
 
 class Track {
 public:
-    Track(int state_dim = 6, double dt = 0.1, double process_variance = 0.01);
+    Track();
 
     void init(const BBox&);
     void predict(double dt);
@@ -19,15 +19,17 @@ private:
     BBox boundingbox_;
 };
 
-Track::Track(int state_dim, double dt, double process_variance)
-    : ekf_(state_dim, dt, process_variance), boundingbox_() {} 
+Track::Track()
+    :ekf_(),boundingbox_() {} 
 
 void Track::init(const BBox& bbox) {
     boundingbox_ = bbox;
+    ekf_.init_x(boundingbox_.position);
 }
 
 void Track::predict(double dt) {
-   
+
+    ekf_.predict(dt);
 }
 
 void Track::update(const BBox& bbox) {

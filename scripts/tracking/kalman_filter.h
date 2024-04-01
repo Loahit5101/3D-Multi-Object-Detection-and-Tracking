@@ -8,98 +8,108 @@ class ExtendedKalmanFilter {
 
 private:
     int state_dim;
+    int measurement_dim;
     double process_variance;
+
+    Eigen::VectorXd x_;
+    Eigen::MatrixXd F_;
+    Eigen::MatrixXd P_initial;
+    Eigen::MatrixXd P_;
+    Eigen::MatrixXd Q_;
+    Eigen::MatrixXd H_;
+    Eigen::MatrixXd R_;
 
 public:
     
-    double dt;
-    ExtendedKalmanFilter(int state_dim, double dt, double process_variance) 
-        : state_dim(state_dim), dt(dt), process_variance(process_variance) {}
+    ExtendedKalmanFilter() 
+    {
 
-    Eigen::MatrixXd get_F() {
-        Eigen::MatrixXd F = Eigen::MatrixXd::Identity(state_dim, state_dim);
-        F(0, 3) = F(1, 4) = F(2, 5) = dt;
-        return F;
+         double s_x = 0.1;
+         double s_y = 0.1;
+         double s_z = 0.1;
+
+         process_variance = 0.01;
+
+         measurement_dim = 3;
+         state_dim = 6;
+         
+          x_ = Eigen::VectorXd::Zero(state_dim);
+          F_ = Eigen::MatrixXd::Identity(state_dim, state_dim);
+          Q_ = Eigen::MatrixXd::Zero(state_dim, state_dim);
+          P_initial = Eigen::MatrixXd::Zero(state_dim, state_dim);
+          P_ = Eigen::MatrixXd::Zero(state_dim, state_dim);
+          R_ = Eigen::MatrixXd::Zero(measurement_dim, measurement_dim);
+          R_ << s_x*s_x, 0, 0, 
+               0, s_y*s_y, 0,
+               0, 0, s_z*s_z;
+
+          H_ = Eigen::MatrixXd::Zero(measurement_dim, state_dim);
+
+          H_(0,0)=1;
+          H_(1,1)=1;
+          H_(2,2)=1;     
+
+    }
+
+    void init_x(Eigen::Vector3f position) {
+        
+       // set initial state with first measurement 
+       x_ <<position.x(),position.y(),position.z(),0.0,0.0,0.0; 
+    
+    }
+
+    void update_F(double dt) {
+        
+        F_(0, 3) = F_(1, 4) = F_(2, 5) = dt;
+    
     }
     
-    Eigen::MatrixXd get_Q() {
+    void update_Q(double dt) {
 
-        Eigen::MatrixXd Q = Eigen::MatrixXd::Zero(state_dim, state_dim);
         double dt2 = dt * dt;
         double dt3 = dt2 * dt;
         double dt4 = dt3 * dt;
  
-        Q(0, 0) = Q(1, 1) = Q(2, 2) = dt4 / 4;
-        Q(0, 3) = Q(1, 4) = Q(2, 5) = dt3 / 2;
-        Q(3, 0) = Q(4, 1) = Q(5, 2) = dt3 / 2;
-        Q(3, 3) = Q(4, 4) = Q(5, 5) = dt2;
+        Q_(0, 0) = Q_(1, 1) = Q_(2, 2) = dt4 / 4;
+        Q_(0, 3) = Q_(1, 4) = Q_(2, 5) = dt3 / 2;
+        Q_(3, 0) = Q_(4, 1) = Q_(5, 2) = dt3 / 2;
+        Q_(3, 3) = Q_(4, 4) = Q_(5, 5) = dt2;
         
-        /*
-        Q << dt4 / 4.0, 0, 0, dt3 / 2.0, 0, 0,
-             0, dt4 / 4.0, 0, 0, dt3 / 2.0, 0,
-             0, 0, dt4 / 4.0, 0, 0, dt3 / 2.0,
-             dt3 / 2.0, 0, 0, dt2, 0, 0,
-             0, dt3 / 2.0, 0, 0, dt2, 0,
-             0, 0, dt3 / 2.0, 0, 0, dt2;*/
-
-        return Q;
     }
 
-    void predict(Eigen::VectorXd& x, Eigen::MatrixXd& P) {
+    void predict(double dt) {
       
-        Eigen::MatrixXd F = get_F();
-        Eigen::MatrixXd Q = get_Q();
-        x = F * x;
-        P = F * P * F.transpose() + Q;
+        update_F(dt);
+        update_Q(dt);
+        x_ = F_ * x_;
+        P_ = F_ * P_ * F_.transpose() + Q_;
     }
 
     void update(Eigen::VectorXd& x, Eigen::MatrixXd& P, Eigen::MatrixXd& z, std::string sensor_name){
 
-         Eigen::MatrixXd H;
-         Eigen::MatrixXd y;
-         Eigen::MatrixXd R(3,3);
+        Eigen::MatrixXd y;
 
         if (sensor_name == "LiDAR"){
 
-          int measurement_dim = 3;
-          H = Eigen::MatrixXd::Zero(measurement_dim, state_dim);
-
-          H(0,0)=1;
-          H(1,1)=1;
-          H(2,2)=1;
-
-          std::cout<<H;
-          
-
           Eigen::MatrixXd x_pos(3, 1); // get x,y and z from x
-          x_pos << x(1,0),x(2,0),x(3,0); // Example LiDAR measurement
+          x_pos << x_(1,0),x_(2,0),x_(3,0);
 
-           y = z - x_pos;  // Lidar measurement function is linear(we get position from detection directly)
           
-          double s_x = 0.1;
-          double s_y = 0.1;
-          double s_z = 0.1;
-
-          R << s_x*s_x, 0, 0, 
-               0, s_y*s_y, 0,
-               0, 0, s_z*s_z;
-
+          y = z - x_pos;  // Lidar measurement function is linear(we get position from detection directly)
+          
         }
 
         else if(sensor_name == "camera"){
 
           //TODO
         }
+        
+        Eigen::MatrixXd S = H_ * P_ * H_.transpose() + R_ ; 
+        Eigen::MatrixXd K = P_ * H_.transpose() * S.inverse();
+        Eigen::MatrixXd I = Eigen::MatrixXd::Identity(state_dim, state_dim);
 
-          Eigen::MatrixXd S = H * P * H.transpose() + R ; 
-
-          Eigen::MatrixXd K = P * H.transpose() * S.inverse();
-
-          x = x + (K * y);
-
-          Eigen::MatrixXd I = Eigen::MatrixXd::Identity(state_dim, state_dim);
-          P = (I - K * H) * P;
-
+        x_ = x_ + (K * y);
+        P_ = (I - K * H_) * P_;
     }
 };
 

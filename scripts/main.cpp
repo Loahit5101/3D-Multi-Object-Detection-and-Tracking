@@ -165,8 +165,6 @@ int main(int argc, char** argv)
 
     size_t obstacle_id_count = 0;
 
-    //test_kalman();
-
     int frame_counter = 0;
     // Loop through point clouds and images
     for (const auto& entry : file_list)
@@ -189,7 +187,8 @@ int main(int argc, char** argv)
         // Get bounding boxes from LiDAR
         auto lidar_bounding_boxes = lidar_detector.getDetections(cloud, segmented_cloud, ground_plane, obstacles_cloud, obstacle_id_count);
 
-        multi_object_tracker.detectionstoTracks(lidar_bounding_boxes);
+        double dt = 0.01;
+        multi_object_tracker.run(lidar_bounding_boxes, dt);
 
         // Create visualization markers for bounding boxes
         visualization_msgs::MarkerArray bbox_markers = createBoundingBoxMarkers(lidar_bounding_boxes);
