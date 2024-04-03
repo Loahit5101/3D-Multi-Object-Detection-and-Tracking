@@ -14,6 +14,7 @@ public:
   void init(const BBox&);
   void predict(double dt);
   void update(const BBox&);
+  const BBox& getBBox() const;
 
 private:
   ExtendedKalmanFilter ekf_;  // Kalman filter for tracking
@@ -37,6 +38,11 @@ void Track::predict(double dt)
 
 void Track::update(const BBox& bbox)
 {
+}
+
+const BBox& Track::getBBox() const
+{
+  return boundingbox_;
 }
 
 #endif

@@ -14,22 +14,27 @@ private:
 
 void Tracker::run(std::vector<BBox>& detections, double dt)
 {
-  if (tracks_.empty())
+  for (auto& track : tracks_)
   {
-    tracks_.resize(detections.size());
-    for (int i = 0; i < detections.size(); i++)
-    {
-      tracks_[i].init(detections[i]);  // Initialize track with detected bounding box
-    }
+    track.predict(dt);
   }
+  // association
 
-  else
+  std::vector<BBox> matched_detections;
+  // vector of unassociated detections
+  std::vector<BBox> unmatched_detections;
+
+  // tracks to prev_boxes
+  std::vector<BBox> prev_boxes;
+
+  for (auto track : tracks_)
   {
-    for (auto& track : tracks_)
-    {
-      track.predict(dt);
-    }
-    // association
+    prev_boxes.push_back(track.getBBox());
+  }
+  if (!detections.empty())
+  {
+    associateBoxes(prev_boxes, detections, 0.5, 0.5);
+    std::cout << " in associate";
   }
 }
 
