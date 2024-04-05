@@ -171,6 +171,7 @@ int main(int argc, char** argv)
 
   int frame_counter = 0;
   // Loop through point clouds and images
+  std::vector<BBox> prev_lidar_boxes;
   for (const auto& entry : file_list)
   {
     // Load point cloud and image
@@ -193,7 +194,7 @@ int main(int argc, char** argv)
         lidar_detector.getDetections(cloud, segmented_cloud, ground_plane, obstacles_cloud, obstacle_id_count);
 
     double dt = 0.01;
-    multi_object_tracker.run(lidar_bounding_boxes, dt);
+    multi_object_tracker.run(lidar_bounding_boxes,prev_lidar_boxes, dt);
 
     // Create visualization markers for bounding boxes
     visualization_msgs::MarkerArray bbox_markers = createBoundingBoxMarkers(lidar_bounding_boxes);
@@ -206,6 +207,8 @@ int main(int argc, char** argv)
     publishImage(pub_image, image);
 
     frame_counter += 1;
+    prev_lidar_boxes.clear();
+    prev_lidar_boxes = std::move(lidar_bounding_boxes);
 
     // Spin and sleep
     ros::spinOnce();
