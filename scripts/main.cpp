@@ -196,8 +196,10 @@ int main(int argc, char** argv)
     double dt = 0.0;
     multi_object_tracker.run(lidar_bounding_boxes, dt);
 
+    auto tracked_boxes = multi_object_tracker.getDetectionsFromTracks();
+
     // Create visualization markers for bounding boxes
-    visualization_msgs::MarkerArray bbox_markers = createBoundingBoxMarkers(lidar_bounding_boxes);
+    visualization_msgs::MarkerArray bbox_markers = createBoundingBoxMarkers(tracked_boxes);
 
     // Publish data
     publishPointCloud(pub, cloud);

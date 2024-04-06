@@ -8,6 +8,7 @@ class Tracker
 public:
   void run(std::vector<BBox>& detections, double dt);
   std::vector<Track> getTracks();
+  std::vector<BBox> getDetectionsFromTracks();
 
 private:
   std::vector<Track> tracks_;
@@ -129,5 +130,19 @@ void Tracker::run(std::vector<BBox>& current_detections, double dt)
 std::vector<Track> Tracker::getTracks()
 {
   return tracks_;
+}
+
+std::vector<BBox> Tracker::getDetectionsFromTracks()
+{
+  
+  std::vector<BBox> detections;
+
+  for(auto& track:tracks_){
+ 
+     detections.push_back(track.getBBox());
+
+  }
+  return detections;
+
 }
 #endif

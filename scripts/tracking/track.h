@@ -38,8 +38,22 @@ void Track::predict(double dt)
 
 void Track::update(const BBox& bbox)
 {
+  // Extract measurement from the bounding box
+  Eigen::MatrixXd measurement(3, 1);
+  measurement << bbox.position.x(), bbox.position.y(), bbox.position.z();
+
+  // Update the Kalman filter with the measurement
+  ekf_.update(measurement, "LiDAR");
+
+  Eigen::VectorXd updated_state = ekf_.getState();
+  // Update the bounding box
   boundingbox_ = bbox;
+
+  boundingbox_.position.x() = updated_state(0);
+  boundingbox_.position.y() = updated_state(1);
+  boundingbox_.position.z() = updated_state(2);
 }
+
 
 const BBox& Track::getBBox() const
 {

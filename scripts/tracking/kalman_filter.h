@@ -77,7 +77,7 @@ public:
     P_ = F_ * P_ * F_.transpose() + Q_;
   }
 
-  void update(Eigen::VectorXd& x, Eigen::MatrixXd& P, Eigen::MatrixXd& z, std::string sensor_name)
+  void update(const Eigen::MatrixXd& z, std::string sensor_name)
   {
     Eigen::MatrixXd y;
 
@@ -101,6 +101,12 @@ public:
 
     x_ = x_ + (K * y);
     P_ = (I - K * H_) * P_;
+  }
+
+  Eigen::VectorXd getState(){
+ 
+       return x_;
+
   }
 };
 
