@@ -82,6 +82,19 @@ void Tracker::run(std::vector<BBox>& current_detections, double dt)
         current_detections[cur_index].id = prev_boxes[pre_index].id;
 
         // perform update step using updated current_detections
+          // Perform Kalman Filter update step
+        // Extract the matched previous box and current detection
+        const auto prev_bbox = prev_boxes[pre_index];
+        const auto& cur_detection = current_detections[cur_index];
+
+        // Find the corresponding track
+        auto& track = tracks_[prev_bbox.id]; // Assuming track IDs match box IDs
+
+        // Get measurement from the current detection
+        BBox measurement = cur_detection;
+
+        // Perform Kalman Filter update step
+        track.update(measurement);
       }
     }
 
