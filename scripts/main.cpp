@@ -193,8 +193,8 @@ int main(int argc, char** argv)
     auto lidar_bounding_boxes =
         lidar_detector.getDetections(cloud, segmented_cloud, ground_plane, obstacles_cloud, obstacle_id_count);
 
-    double dt = 0.01;
-    multi_object_tracker.run(lidar_bounding_boxes,prev_lidar_boxes, dt);
+    double dt = 0.0;
+    multi_object_tracker.run(lidar_bounding_boxes, dt);
 
     // Create visualization markers for bounding boxes
     visualization_msgs::MarkerArray bbox_markers = createBoundingBoxMarkers(lidar_bounding_boxes);

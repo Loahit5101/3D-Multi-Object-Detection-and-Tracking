@@ -38,6 +38,7 @@ void Track::predict(double dt)
 
 void Track::update(const BBox& bbox)
 {
+  boundingbox_ = bbox;
 }
 
 const BBox& Track::getBBox() const
