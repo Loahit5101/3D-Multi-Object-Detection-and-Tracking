@@ -9,6 +9,7 @@ public:
   void run(std::vector<BBox>& detections, double dt);
   std::vector<Track> getTracks();
   std::vector<BBox> getDetectionsFromTracks();
+  void association(std::vector<BBox> current_detections, std::vector<BBox>& matched_detections, std::vector<BBox>& unmatched_detections);
 
 private:
   std::vector<Track> tracks_;
@@ -16,22 +17,7 @@ private:
 
 void Tracker::run(std::vector<BBox>& current_detections, double dt)
 {
-  if (current_detections.empty())
-  {
-    return;
-  }
-
-  if (tracks_.empty())
-  {
-    for (auto& detection : current_detections)
-    {
-      Track new_track;
-      new_track.init(detection);
-      tracks_.push_back(new_track);
-    }
-    return;
-  }
-
+  
   // Prediction step
   for (auto& track : tracks_)
   {
@@ -39,16 +25,61 @@ void Tracker::run(std::vector<BBox>& current_detections, double dt)
   }
 
   // Association
-  std::vector<BBox> prev_boxes;
-  std::vector<int> pre_ids;
-  std::vector<int> cur_ids;
-  std::vector<int> matches;
   std::vector<BBox> unmatched_detections;
+  std::vector<BBox> matched_detections;
+
+
+  if (!current_detections.empty()) {
+
+        association(current_detections,matched_detections,unmatched_detections);
+  }
+
+  /*** Update tracks with associated bbox */
+for (const auto &match : matched_detections) {
+    // Find the corresponding track
+    for (auto& track : tracks_) {
+        if (track.getId() == match.id) { // Assuming track IDs match box IDs
+            // Perform Kalman Filter update step
+            track.update(match);
+            break; // Once updated, no need to search further
+        }
+    }
+}
+
+for (const auto& det : unmatched_detections) {
+    Track new_track;
+    new_track.init(det); // Initialize the new track with the unmatched detection
+    tracks_.push_back(new_track); // Add the new track to the list of tracks
+}
+
+ int kMaxConsecutiveFramesLost = 4;
+
+    // Delete lost tracks
+  for (auto it = tracks_.begin(); it != tracks_.end();) {
+        if (it->getConsecutiveFramesLost() > kMaxConsecutiveFramesLost) {
+            it = tracks_.erase(it);
+        } else {
+            it++;
+        }
+    }
+
+
+
+}
+
+void Tracker::association(std::vector<BBox> current_detections, std::vector<BBox>& matched_detections, std::vector<BBox>& unmatched_detections)
+{
+  std::vector<BBox> prev_boxes;
 
   for (auto& track : tracks_)
   {
     prev_boxes.push_back(track.getBBox());
   }
+
+  std::vector<int> pre_ids;
+  std::vector<int> cur_ids;
+  std::vector<int> matches;
+  std::vector<bool> matched(current_detections.size(), false); // Initialize with all detections unmatched
 
   if (!current_detections.empty())
   {
@@ -81,50 +112,28 @@ void Tracker::run(std::vector<BBox>& current_detections, double dt)
       {
         // change the id of the current box to the same as the previous box
         current_detections[cur_index].id = prev_boxes[pre_index].id;
+        matched[cur_index] = true;
 
-        // perform update step using updated current_detections
-          // Perform Kalman Filter update step
         // Extract the matched previous box and current detection
         const auto prev_bbox = prev_boxes[pre_index];
         const auto& cur_detection = current_detections[cur_index];
 
-        // Find the corresponding track
-        auto& track = tracks_[prev_bbox.id]; // Assuming track IDs match box IDs
-
-        // Get measurement from the current detection
-        BBox measurement = cur_detection;
-
-        // Perform Kalman Filter update step
-        track.update(measurement);
+        // Add to matched detections
+        matched_detections.push_back(cur_detection);
       }
     }
 
-    // Extract unmatched detections
-    unmatched_detections.clear();
+    // Add unmatched detections
     for (int i = 0; i < current_detections.size(); ++i)
     {
-      bool matched = false;
-      for (int j = 0; j < matches.size(); ++j)
-      {
-        if (cur_ids[j] == current_detections[i].id)
-        {
-          matched = true;
-          break;
-        }
-      }
-      if (!matched)
+      if (!matched[i])
       {
         unmatched_detections.push_back(current_detections[i]);
       }
     }
 
-    for (const auto& det : unmatched_detections)
-    {
-      Track tracker;
-      tracker.init(det);
-      tracks_.push_back(tracker);
-    }
   }
+
 }
 
 std::vector<Track> Tracker::getTracks()

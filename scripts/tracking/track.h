@@ -15,10 +15,14 @@ public:
   void predict(double dt);
   void update(const BBox&);
   const BBox& getBBox() const;
+  size_t getId();
+  int getConsecutiveFramesLost() const;
+  
 
 private:
   ExtendedKalmanFilter ekf_;  // Kalman filter for tracking
   BBox boundingbox_;
+  int consecutive_frames_lost_ ;
 };
 
 Track::Track() : ekf_(), boundingbox_()
@@ -29,15 +33,18 @@ void Track::init(const BBox& bbox)
 {
   boundingbox_ = bbox;
   ekf_.init_x(boundingbox_.position);
+  consecutive_frames_lost_=0;
 }
 
 void Track::predict(double dt)
 {
+  consecutive_frames_lost_++;
   ekf_.predict(dt);
 }
 
 void Track::update(const BBox& bbox)
 {
+  consecutive_frames_lost_ = 0;
   // Extract measurement from the bounding box
   Eigen::MatrixXd measurement(3, 1);
   measurement << bbox.position.x(), bbox.position.y(), bbox.position.z();
@@ -49,15 +56,24 @@ void Track::update(const BBox& bbox)
   // Update the bounding box
   boundingbox_ = bbox;
 
-  boundingbox_.position.x() = updated_state(0);
-  boundingbox_.position.y() = updated_state(1);
-  boundingbox_.position.z() = updated_state(2);
+  //boundingbox_.position.x() = updated_state(0);
+  //boundingbox_.position.y() = updated_state(1);
+  //boundingbox_.position.z() = updated_state(2);
 }
 
+size_t Track::getId()
+{
+   return boundingbox_.id;
+}
 
 const BBox& Track::getBBox() const
 {
   return boundingbox_;
+}
+
+int Track::getConsecutiveFramesLost() const
+{
+    return consecutive_frames_lost_;
 }
 
 #endif
