@@ -103,10 +103,9 @@ public:
     P_ = (I - K * H_) * P_;
   }
 
-  Eigen::VectorXd getState(){
- 
-       return x_;
-
+  Eigen::VectorXd getState()
+  {
+    return x_;
   }
 };
 

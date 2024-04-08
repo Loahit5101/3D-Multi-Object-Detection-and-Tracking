@@ -125,6 +125,36 @@ visualization_msgs::MarkerArray createBoundingBoxMarkers(const std::vector<BBox>
   return markers;
 }
 
+visualization_msgs::Marker publishDownsampledTrajectory(const Track& track, size_t skip_factor)
+{
+  visualization_msgs::Marker trajectory_marker;
+  trajectory_marker.header.frame_id = "map";
+  trajectory_marker.header.stamp = ros::Time::now();
+  trajectory_marker.ns = "trajectory";
+  trajectory_marker.id = track.getId();  // Unique ID for each track
+  trajectory_marker.type = visualization_msgs::Marker::LINE_STRIP;
+  trajectory_marker.action = visualization_msgs::Marker::ADD;
+  trajectory_marker.pose.orientation.w = 1.0;
+  trajectory_marker.scale.x = 0.1;  // Line width
+  trajectory_marker.color.r = 0.0;
+  trajectory_marker.color.g = 1.0;
+  trajectory_marker.color.b = 0.0;
+  trajectory_marker.color.a = 1.0;
+
+  // Downsample the points of the trajectory
+  for (size_t i = 0; i < track.position_history_.size(); i += skip_factor)
+  {
+    const auto& position = track.position_history_[i];
+    geometry_msgs::Point point;
+    point.x = position(0);
+    point.y = position(1);
+    point.z = position(2);
+    trajectory_marker.points.push_back(point);
+  }
+
+  return trajectory_marker;
+}
+
 int main(int argc, char** argv)
 {
   // Initialize ROS
@@ -137,6 +167,7 @@ int main(int argc, char** argv)
   ros::Publisher pub_object = nh.advertise<sensor_msgs::PointCloud2>("object_cloud_topic", 1);
   ros::Publisher pub_box_marker = nh.advertise<visualization_msgs::MarkerArray>("bounding_box", 1);
   ros::Publisher pub_image = nh.advertise<sensor_msgs::Image>("image_topic", 1);
+  ros::Publisher pub_trajectory = nh.advertise<visualization_msgs::Marker>("trajectory_marker", 5000);
 
   ros::Rate loop_rate(10);
 
@@ -201,6 +232,16 @@ int main(int argc, char** argv)
     // Create visualization markers for bounding boxes
     visualization_msgs::MarkerArray bbox_markers = createBoundingBoxMarkers(tracked_boxes);
 
+    // Track Visualization
+    auto tracks = multi_object_tracker.getTracks();
+
+    size_t skip_factor = 2;  // Adjust as needed
+    for (const auto& track : tracks)
+    {
+      // Publish downsized trajectory for each track
+      auto downsized_trajectory_marker = publishDownsampledTrajectory(track, skip_factor);
+      pub_trajectory.publish(downsized_trajectory_marker);
+    }
     // Publish data
     publishPointCloud(pub, cloud);
     publishPointCloud(pub_ground, ground_plane);
