@@ -6,11 +6,15 @@
 4. Tracking and sensor Fusion - ongoing
 5. Docker and GitHub actions are used for CI/CD
 6. GTest is used for executing tests.
-7. ROS is only used for visualization
+7. ROS is used for visualization
+
+
+
+https://github.com/Loahit5101/3D-Multi-Object-Detection-and-Tracking/assets/55102632/a22803b9-c49c-4ea7-bf10-35d048c6f632
+
+
 
    
-     ![lidar_camera_detection3-2024-03-12_19 22 58-ezgif com-speed](https://github.com/Loahit5101/3D-Multi-Object-Detection-and-Tracking/assets/55102632/d732b39b-e291-4833-b68a-1c5815f2e164)
-
 
 ## Dependencies
 - Eigen3
@@ -64,9 +68,10 @@ Uses YOLOv3 object detection model to detect 2D obstacles.
 4. Visualization of detected obstacles
 
 
-## Tracking:
+## Mulit-object Tracking:
 
-1. Extended Kalman Filter for tracking
+1. Extended Kalman Filter for Tracking and Fusion
 2. Hungarian Algorithm for data association
+3. Track Management: SORT algorithm
 
 
